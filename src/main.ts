@@ -23,7 +23,7 @@ async function bootstrap() {
       if (!origin || whitelist.includes(origin)) return cb(null, true);
       return cb(new Error('Not allowed by CORS'));
     },
-    credentials: true, // <-- ВАЖНО
+    credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',
     exposedHeaders: 'Content-Disposition',

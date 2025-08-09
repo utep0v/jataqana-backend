@@ -66,7 +66,6 @@ export class ApplicationController {
     return { id: saved.id, createdAt: saved.createdAt };
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   findPaged(@Query() query: QueryApplicationDto) {
     return this.service.findPagedAndFiltered({
@@ -78,7 +77,6 @@ export class ApplicationController {
     });
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('export')
   async export(@Query() query: QueryApplicationDto) {
     const { publicUrl } = await this.service.exportToExcelPublic({

@@ -7,7 +7,6 @@ import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 export class DashboardController {
   constructor(private service: DashboardService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Get('summary')
   summary() {
     return this.service.summary();
