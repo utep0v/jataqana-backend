@@ -5,6 +5,7 @@ import {
   Post,
   Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -15,6 +16,7 @@ import { ApplicationService } from './application.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { existsSync, mkdirSync } from 'fs';
 import { QueryApplicationDto } from './dto/query-application.dto';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED = [
@@ -29,7 +31,6 @@ const ALLOWED = [
 export class ApplicationController {
   constructor(private service: ApplicationService) {}
 
-  // Поле файла в форме: 'socialDoc'
   @Post()
   @UseInterceptors(
     FileInterceptor('socialDoc', {
@@ -65,6 +66,7 @@ export class ApplicationController {
     return { id: saved.id, createdAt: saved.createdAt };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   findPaged(@Query() query: QueryApplicationDto) {
     return this.service.findPagedAndFiltered({
@@ -76,6 +78,7 @@ export class ApplicationController {
     });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('export')
   async export(@Query() query: QueryApplicationDto) {
     const { publicUrl } = await this.service.exportToExcelPublic({

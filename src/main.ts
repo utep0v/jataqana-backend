@@ -18,8 +18,15 @@ async function bootstrap() {
     }),
   );
   app.enableCors({
-    origin: ['https://abai-jataqana.kz', 'http://localhost:4200'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: (origin, cb) => {
+      const whitelist = ['http://localhost:4200', 'https://abai-jataqana.kz'];
+      if (!origin || whitelist.includes(origin)) return cb(null, true);
+      return cb(new Error('Not allowed by CORS'));
+    },
+    credentials: true, // <-- ВАЖНО
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Authorization',
+    exposedHeaders: 'Content-Disposition',
   });
 
   app.use('/public', express.static(join(process.cwd(), 'public')));

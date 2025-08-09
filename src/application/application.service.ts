@@ -20,10 +20,6 @@ export class ApplicationService {
     return this.repo.save(entity);
   }
 
-  findAll() {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
-  }
-
   async findPagedAndFiltered(q: {
     page: number;
     size: number;
