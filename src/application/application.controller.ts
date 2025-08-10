@@ -4,11 +4,10 @@ import {
   Get,
   Post,
   Query,
-  UploadedFile,
-  UseGuards,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { v4 as uuid } from 'uuid';
@@ -16,54 +15,42 @@ import { ApplicationService } from './application.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { existsSync, mkdirSync } from 'fs';
 import { QueryApplicationDto } from './dto/query-application.dto';
-import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED = [
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
 
 @Controller('application')
 export class ApplicationController {
   constructor(private service: ApplicationService) {}
 
-  @Post()
   @UseInterceptors(
-    FileInterceptor('socialDoc', {
+    FilesInterceptor('socialDocs', 5, {
       storage: diskStorage({
         destination: (_req, _file, cb) => {
           const dest = join(process.cwd(), 'public', 'uploads', 'social');
-          if (!existsSync(dest)) {
-            mkdirSync(dest, { recursive: true });
-          }
+          if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
           cb(null, dest);
         },
-        filename: (_req, file, cb) => {
-          cb(null, `${uuid()}${extname(file.originalname)}`);
-        },
+        filename: (_req, file, cb) =>
+          cb(null, `${uuid()}${extname(file.originalname)}`),
       }),
-      limits: { fileSize: MAX_FILE_SIZE },
+      limits: { fileSize: 10 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
-        if (!ALLOWED.includes(file.mimetype)) {
-          return cb(new Error('Бұл файл түріне рұқсат жоқ'), false);
-        }
-        cb(null, true);
+        const ok = [
+          'application/pdf',
+          'image/png',
+          'image/jpeg',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ].includes(file.mimetype);
+        cb(ok ? null : new Error('Бұл файл түріне рұқсат жоқ'), ok);
       },
     }),
   )
+  @Post()
   async create(
     @Body() dto: CreateApplicationDto,
-    @UploadedFile() file?: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[] = [],
   ) {
-    const socialDocPath = file
-      ? `public/uploads/social/${file.filename}`
-      : undefined;
-    const saved = await this.service.create(dto, socialDocPath);
-    return { id: saved.id, createdAt: saved.createdAt };
+    const paths = files.map((f) => `public/uploads/social/${f.filename}`);
+    const saved = await this.service.create(dto, paths); // см. сервис ниже
   }
 
   @Get()

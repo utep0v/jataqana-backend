@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import {Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { existsSync, mkdirSync } from 'fs';
 import { writeFile } from 'fs/promises';
@@ -15,8 +15,11 @@ export class ApplicationService {
     private repo: Repository<Application>,
   ) {}
 
-  create(dto: CreateApplicationDto, socialDocPath?: string) {
-    const entity = this.repo.create({ ...dto, socialDocPath });
+  create(dto: CreateApplicationDto, socialDocPaths: string[] = []) {
+    const entity = this.repo.create({
+      ...dto,
+      socialDocPaths,
+    });
     return this.repo.save(entity);
   }
 
@@ -56,7 +59,6 @@ export class ApplicationService {
 
     const rows = await this.repo.find({ where, order: { createdAt: 'DESC' } });
 
-    // дальше — как у тебя было, только без firstName/lastName бага:
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Өтінімдер');
 
@@ -69,7 +71,12 @@ export class ApplicationService {
       { header: 'Оқу курсы', key: 'course', width: 16 },
       { header: 'Факультеті', key: 'faculty', width: 24 },
       { header: 'Әлеуметтік санаты', key: 'socialCategory', width: 24 },
-      { header: 'Құжат (сілтеме)', key: 'docUrl', width: 45 },
+      // 5 отдельных колонок с гиперссылками
+      { header: 'Құжат 1', key: 'doc1', width: 28 },
+      { header: 'Құжат 2', key: 'doc2', width: 28 },
+      { header: 'Құжат 3', key: 'doc3', width: 28 },
+      { header: 'Құжат 4', key: 'doc4', width: 28 },
+      { header: 'Құжат 5', key: 'doc5', width: 28 },
       { header: 'Тапсырылған күні', key: 'createdAt', width: 22 },
     ];
 
@@ -77,9 +84,9 @@ export class ApplicationService {
       const fio = [r.lastName, r.firstName, r.middleName]
         .filter(Boolean)
         .join(' ');
-      const docUrl = r.socialDocPath
-        ? `${process.env.BASE_URL}/${r.socialDocPath.replace(/^\/+/, '')}`
-        : '';
+      const urls = (r.socialDocPaths ?? [])
+        .slice(0, 5)
+        .map((p) => `${process.env.BASE_URL}/${p.replace(/^\/+/, '')}`);
 
       const row = ws.addRow({
         id: r.id,
@@ -90,14 +97,15 @@ export class ApplicationService {
         course: r.course,
         faculty: r.faculty,
         socialCategory: r.socialCategory,
-        docUrl,
         createdAt: r.createdAt.toISOString().replace('T', ' ').slice(0, 19),
       });
 
-      if (docUrl) {
-        const cell = row.getCell('docUrl');
-        cell.value = { text: 'Ашу', hyperlink: docUrl };
-      }
+      // Гиперссылки
+      urls.forEach((u, idx) => {
+        const key = `doc${idx + 1}` as const;
+        const cell = row.getCell(key);
+        cell.value = { text: `Ашу ${idx + 1}`, hyperlink: u };
+      });
     }
 
     const dir = join(process.cwd(), 'public', 'exports');
@@ -109,7 +117,6 @@ export class ApplicationService {
 
     const buffer = await wb.xlsx.writeBuffer();
     await writeFile(absPath, Buffer.from(buffer));
-
     return { publicUrl };
   }
 }

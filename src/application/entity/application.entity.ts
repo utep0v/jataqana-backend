@@ -44,8 +44,8 @@ export class Application {
   socialCategory: string;
 
   // Әлеуметтік санатты растайтын құжат (путь к файлу)
-  @Column({ nullable: true })
-  socialDocPath?: string;
+  @Column('text', { array: true, nullable: true })
+  socialDocPaths?: string[];
 
   @CreateDateColumn()
   createdAt: Date;
