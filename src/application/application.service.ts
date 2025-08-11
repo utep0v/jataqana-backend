@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -15,12 +15,19 @@ export class ApplicationService {
     private repo: Repository<Application>,
   ) {}
 
-  create(dto: CreateApplicationDto, socialDocPaths: string[] = []) {
-    const entity = this.repo.create({
-      ...dto,
-      socialDocPaths,
-    });
-    return this.repo.save(entity);
+  async create(dto: CreateApplicationDto, socialDocPaths?: string[]) {
+    const campaignYear = dto.campaignYear ?? new Date().getFullYear();
+    const entity = this.repo.create({ ...dto, campaignYear, socialDocPaths });
+
+    try {
+      return await this.repo.save(entity);
+    } catch (e: any) {
+      // Postgres unique violation
+      if (e?.code === '23505') {
+        throw new ConflictException('Заявка с этим ИИН уже отправлена.');
+      }
+      throw e;
+    }
   }
 
   async findPagedAndFiltered(q: {

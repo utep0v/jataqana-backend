@@ -5,10 +5,13 @@ import {
   IsString,
   Matches,
   Length,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateApplicationDto {
-  // Студенттің аты-жөні
   @IsString()
   @IsNotEmpty()
   firstName: string;
@@ -21,33 +24,34 @@ export class CreateApplicationDto {
   @IsNotEmpty()
   middleName: string;
 
-  // ЖСН: ровно 12 цифр
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(2024)
+  @Max(2100)
+  campaignYear?: number;
+
   @Matches(/^\d{12}$/, { message: 'ЖСН 12 цифр болуы керек' })
   @Length(12, 12)
   iin: string;
 
-  // Электронды поштасы
   @IsOptional()
   @IsEmail({}, { message: 'Дұрыс email енгізіңіз' })
   email?: string;
 
-  // Телефон номері (простая проверка, можно усилить под KZ)
   @IsString()
   @IsNotEmpty()
   @Matches(/^[\d+()\-\s]{6,20}$/, { message: 'Телефон форматы қате' })
   phone: string;
 
-  // Оқу курсы
   @IsString()
   @IsNotEmpty()
   course: string;
 
-  // Факультеті
   @IsString()
   @IsNotEmpty()
   faculty: string;
 
-  // Әлеуметтік санаты
   @IsString()
   @IsNotEmpty()
   socialCategory: string;

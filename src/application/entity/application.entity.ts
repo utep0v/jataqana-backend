@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+@Index(['iin', 'campaignYear'], { unique: true })
 @Entity('application')
 export class Application {
   @PrimaryGeneratedColumn('uuid')
@@ -19,31 +21,27 @@ export class Application {
   @Column()
   middleName: string;
 
-  // ЖСН (ИИН) — 12 цифр
   @Column({ length: 12 })
   iin: string;
 
-  // Электронды поштасы
+  @Column({ type: 'smallint', default: () => 'EXTRACT(YEAR FROM NOW())' })
+  campaignYear: number;
+
   @Column({ nullable: true })
   email?: string;
 
-  // Телефон номері
   @Column()
   phone: string;
 
-  // Оқу курсы (например: "1 курс", "2 курс" или число)
   @Column()
   course: string;
 
-  // Факультеті
   @Column()
   faculty: string;
 
-  // Әлеуметтік санаты (например: "көп балалы", "мүгедектік", и т.д.)
   @Column()
   socialCategory: string;
 
-  // Әлеуметтік санатты растайтын құжат (путь к файлу)
   @Column('text', { array: true, nullable: true })
   socialDocPaths?: string[];
 
