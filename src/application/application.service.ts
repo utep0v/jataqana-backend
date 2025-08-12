@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { existsSync, mkdirSync } from 'fs';
 import { writeFile } from 'fs/promises';
@@ -91,9 +91,13 @@ export class ApplicationService {
       const fio = [r.lastName, r.firstName, r.middleName]
         .filter(Boolean)
         .join(' ');
-      const urls = (r.socialDocPaths ?? [])
-        .slice(0, 5)
-        .map((p) => `${process.env.BASE_URL}/${p.replace(/^\/+/, '')}`);
+      const urls = (r.socialDocPaths ?? []).slice(0, 5).map((p) => {
+        let cleanPath = p.replace(/^\.?\/*/, ''); // убираем ./ или /
+        if (!cleanPath.startsWith('public/')) {
+          cleanPath = 'public/' + cleanPath;
+        }
+        return `${process.env.BASE_URL}/${cleanPath}`;
+      });
 
       const row = ws.addRow({
         id: r.id,
