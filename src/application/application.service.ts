@@ -8,6 +8,15 @@ import { join } from 'path';
 import { Application } from './entity/application.entity';
 import { CreateApplicationDto } from './dto/create-application.dto';
 
+type FindFilter = {
+  page: number;
+  size: number;
+  course?: string;
+  faculty?: string;
+  socialCategory?: string;
+  search?: string;
+};
+
 @Injectable()
 export class ApplicationService {
   constructor(
@@ -30,27 +39,61 @@ export class ApplicationService {
     }
   }
 
-  async findPagedAndFiltered(q: {
-    page: number;
-    size: number;
-    course?: string;
-    faculty?: string;
-    socialCategory?: string;
-  }) {
-    const { page = 1, size = 10, course, faculty, socialCategory } = q;
+  private applyFilters(
+    qb: ReturnType<typeof this.repo.createQueryBuilder>,
+    f: Omit<FindFilter, 'page' | 'size'>,
+  ) {
+    if (f.course) qb.andWhere('a.course = :course', { course: f.course });
+    if (f.faculty) qb.andWhere('a.faculty = :faculty', { faculty: f.faculty });
+    if (f.socialCategory)
+      qb.andWhere('a.socialCategory = :socialCategory', {
+        socialCategory: f.socialCategory,
+      });
 
-    const where: any = {};
-    if (course) where.course = course;
-    if (faculty) where.faculty = faculty;
-    if (socialCategory) where.socialCategory = socialCategory;
+    if (f.search) {
+      // делим на токены по пробелам/запятым; игнорируем пустые
+      const tokens = f.search
+        .trim()
+        .split(/[\s,]+/)
+        .filter(Boolean);
 
-    const [items, total] = await this.repo.findAndCount({
-      where,
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * size,
-      take: size,
-    });
+      // для каждого токена добавляем группу OR по полям; группы связываем через AND
+      tokens.forEach((tok, i) => {
+        const isDigits = /^\d+$/.test(tok);
+        const param = `s${i}`;
+        const val = `%${tok}%`;
 
+        // если это похоже на фрагмент ИИН — тоже ищем по iin
+        const ors: string[] = [
+          `a.firstName ILIKE :${param}`,
+          `a.lastName ILIKE :${param}`,
+          `a.middleName ILIKE :${param}`,
+        ];
+        if (isDigits) {
+          ors.push(`a.iin ILIKE :${param}`);
+        } else {
+          // даже если не только цифры — позволим искать по iin частично
+          ors.push(`a.iin ILIKE :${param}`);
+        }
+
+        qb.andWhere(`(${ors.join(' OR ')})`, { [param]: val });
+      });
+    }
+
+    return qb;
+  }
+
+  async findPagedAndFiltered(q: FindFilter) {
+    const { page = 1, size = 10, ...rest } = q;
+
+    const qb = this.repo.createQueryBuilder('a');
+    this.applyFilters(qb, rest);
+
+    qb.orderBy('a.createdAt', 'DESC')
+      .skip((page - 1) * size)
+      .take(size);
+
+    const [items, total] = await qb.getManyAndCount();
     return { items, page, size, total };
   }
 

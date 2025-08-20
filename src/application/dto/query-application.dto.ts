@@ -35,4 +35,8 @@ export class QueryApplicationDto {
   @IsString()
   @toUndefIfEmpty()
   socialCategory?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

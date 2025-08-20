@@ -60,6 +60,7 @@ export class ApplicationController {
       size: query.size ?? 10,
       course: query.course, // undefined если пусто
       faculty: query.faculty,
+      search: query.search,
       socialCategory: query.socialCategory,
     });
   }
