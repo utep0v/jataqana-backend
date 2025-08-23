@@ -58,10 +58,11 @@ export class ApplicationController {
     return this.service.findPagedAndFiltered({
       page: query.page ?? 1,
       size: query.size ?? 10,
-      course: query.course, // undefined если пусто
+      course: query.course,
       faculty: query.faculty,
       search: query.search,
       socialCategory: query.socialCategory,
+      type: query.type,
     });
   }
 
@@ -71,7 +72,23 @@ export class ApplicationController {
       course: query.course,
       faculty: query.faculty,
       socialCategory: query.socialCategory,
+      type: query.type,
     });
     return { url: publicUrl };
+  }
+
+  @Post('access/open')
+  async openAccess(@Body('type') type: string) {
+    return this.service.setAccess(type, true);
+  }
+
+  @Post('access/close')
+  async closeAccess(@Body('type') type: string) {
+    return this.service.setAccess(type, false);
+  }
+
+  @Get('access/status')
+  getStatus(@Query('type') type: string) {
+    return this.service.getStatus(type);
   }
 }

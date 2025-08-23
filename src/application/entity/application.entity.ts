@@ -47,4 +47,7 @@ export class Application {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ default: 'default' })
+  type: string;
 }

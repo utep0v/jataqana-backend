@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 
@@ -8,7 +8,7 @@ export class DashboardController {
   constructor(private service: DashboardService) {}
 
   @Get('summary')
-  summary() {
-    return this.service.summary();
+  summary(@Query('type') type?: string) {
+    return this.service.summary(type);
   }
 }

@@ -9,14 +9,18 @@ export class DashboardService {
     @InjectRepository(Application) private repo: Repository<Application>,
   ) {}
 
-  async summary() {
-    const total = await this.repo.count();
+  async summary(type?: string) {
+    const where: any = {};
+    if (type) where.type = type;
+
+    const total = await this.repo.count({ where });
 
     // группировки
     const byCourse = await this.repo
       .createQueryBuilder('a')
       .select('a.course', 'course')
       .addSelect('COUNT(*)', 'count')
+      .where(type ? 'a.type = :type' : '1=1', { type })
       .groupBy('a.course')
       .orderBy('count', 'DESC')
       .getRawMany();
@@ -25,6 +29,7 @@ export class DashboardService {
       .createQueryBuilder('a')
       .select('a.faculty', 'faculty')
       .addSelect('COUNT(*)', 'count')
+      .where(type ? 'a.type = :type' : '1=1', { type })
       .groupBy('a.faculty')
       .orderBy('count', 'DESC')
       .getRawMany();
@@ -33,19 +38,20 @@ export class DashboardService {
       .createQueryBuilder('a')
       .select('a.socialCategory', 'socialCategory')
       .addSelect('COUNT(*)', 'count')
+      .where(type ? 'a.type = :type' : '1=1', { type })
       .groupBy('a.socialCategory')
       .orderBy('count', 'DESC')
       .getRawMany();
 
-    // последние 7 дней по дням
     const since = new Date();
-    since.setDate(since.getDate() - 6); // today-6 → всего 7 дней
+    since.setDate(since.getDate() - 6);
 
     const last7 = await this.repo
       .createQueryBuilder('a')
       .select("TO_CHAR(a.createdAt, 'YYYY-MM-DD')", 'day')
       .addSelect('COUNT(*)', 'count')
       .where('a.createdAt >= :since', { since })
+      .andWhere(type ? 'a.type = :type' : '1=1', { type })
       .groupBy("TO_CHAR(a.createdAt, 'YYYY-MM-DD')")
       .orderBy('day', 'ASC')
       .getRawMany();

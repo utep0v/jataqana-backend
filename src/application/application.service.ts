@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, GoneException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
@@ -7,6 +7,7 @@ import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { Application } from './entity/application.entity';
 import { CreateApplicationDto } from './dto/create-application.dto';
+import { ApplicationAccess } from './entity/application-access.entity';
 
 type FindFilter = {
   page: number;
@@ -15,6 +16,7 @@ type FindFilter = {
   faculty?: string;
   socialCategory?: string;
   search?: string;
+  type?: string;
 };
 
 @Injectable()
@@ -22,18 +24,52 @@ export class ApplicationService {
   constructor(
     @InjectRepository(Application)
     private repo: Repository<Application>,
+    @InjectRepository(ApplicationAccess)
+    private accessRepo: Repository<ApplicationAccess>,
   ) {}
+
+  async setAccess(type: string, isOpen: boolean) {
+    let access = await this.accessRepo.findOne({ where: { type } });
+    if (!access) {
+      access = this.accessRepo.create({ type, isOpen });
+    } else {
+      access.isOpen = isOpen;
+    }
+    return this.accessRepo.save(access);
+  }
+
+  async checkAccess(type: string) {
+    const access = await this.accessRepo.findOne({ where: { type } });
+    if (!access || !access.isOpen) {
+      throw new GoneException('Подача заявок для этого типа закрыта.');
+    }
+  }
+
+  async getStatus(type: string) {
+    const access = await this.accessRepo.findOne({ where: { type } });
+    return { type, isOpen: access ? access.isOpen : true };
+  }
 
   async create(dto: CreateApplicationDto, socialDocPaths?: string[]) {
     const campaignYear = dto.campaignYear ?? new Date().getFullYear();
-    const entity = this.repo.create({ ...dto, campaignYear, socialDocPaths });
+    const type = dto.type ?? 'default';
+
+    await this.checkAccess(type);
+
+    const entity = this.repo.create({
+      ...dto,
+      campaignYear,
+      type,
+      socialDocPaths,
+    });
 
     try {
       return await this.repo.save(entity);
     } catch (e: any) {
-      // Postgres unique violation
       if (e?.code === '23505') {
-        throw new ConflictException('Заявка с этим ИИН уже отправлена.');
+        throw new ConflictException(
+          'Заявка с этим ИИН и типом на этот год уже отправлена.',
+        );
       }
       throw e;
     }
@@ -50,20 +86,19 @@ export class ApplicationService {
         socialCategory: f.socialCategory,
       });
 
+    if (f.type) qb.andWhere('a.type = :type', { type: f.type });
+
     if (f.search) {
-      // делим на токены по пробелам/запятым; игнорируем пустые
       const tokens = f.search
         .trim()
         .split(/[\s,]+/)
         .filter(Boolean);
 
-      // для каждого токена добавляем группу OR по полям; группы связываем через AND
       tokens.forEach((tok, i) => {
         const isDigits = /^\d+$/.test(tok);
         const param = `s${i}`;
         const val = `%${tok}%`;
 
-        // если это похоже на фрагмент ИИН — тоже ищем по iin
         const ors: string[] = [
           `a.firstName ILIKE :${param}`,
           `a.lastName ILIKE :${param}`,
@@ -72,14 +107,12 @@ export class ApplicationService {
         if (isDigits) {
           ors.push(`a.iin ILIKE :${param}`);
         } else {
-          // даже если не только цифры — позволим искать по iin частично
           ors.push(`a.iin ILIKE :${param}`);
         }
 
         qb.andWhere(`(${ors.join(' OR ')})`, { [param]: val });
       });
     }
-
     return qb;
   }
 
@@ -101,11 +134,13 @@ export class ApplicationService {
     course?: string;
     faculty?: string;
     socialCategory?: string;
+    type?: string;
   }) {
     const where: any = {};
     if (filter?.course) where.course = filter.course;
     if (filter?.faculty) where.faculty = filter.faculty;
     if (filter?.socialCategory) where.socialCategory = filter.socialCategory;
+    if (filter?.type) where.type = filter.type;
 
     const rows = await this.repo.find({ where, order: { createdAt: 'DESC' } });
 

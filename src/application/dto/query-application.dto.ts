@@ -39,4 +39,8 @@ export class QueryApplicationDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
 }

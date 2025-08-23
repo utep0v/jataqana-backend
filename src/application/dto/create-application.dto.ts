@@ -55,4 +55,8 @@ export class CreateApplicationDto {
   @IsString()
   @IsNotEmpty()
   socialCategory: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
 }
