@@ -59,4 +59,8 @@ export class CreateApplicationDto {
   @IsOptional()
   @IsString()
   type?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  gender: string;
 }

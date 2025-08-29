@@ -150,6 +150,7 @@ export class ApplicationService {
     ws.columns = [
       { header: 'ID', key: 'id', width: 36 },
       { header: 'Толық аты-жөні', key: 'fio', width: 32 },
+      { header: 'Жынысы', key: 'gender', width: 12 },
       { header: 'ЖСН', key: 'iin', width: 16 },
       { header: 'Электронды поштасы', key: 'email', width: 28 },
       { header: 'Телефон номері', key: 'phone', width: 20 },
@@ -184,6 +185,7 @@ export class ApplicationService {
         email: r.email ?? '',
         phone: r.phone,
         course: r.course,
+        gender: r.gender,
         faculty: r.faculty,
         socialCategory: r.socialCategory,
         createdAt: r.createdAt.toISOString().replace('T', ' ').slice(0, 19),

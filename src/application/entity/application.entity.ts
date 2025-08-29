@@ -50,4 +50,7 @@ export class Application {
 
   @Column({ default: 'default' })
   type: string;
+
+  @Column({ nullable: true })
+  gender: string;
 }

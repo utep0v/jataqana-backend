@@ -43,6 +43,15 @@ export class DashboardService {
       .orderBy('count', 'DESC')
       .getRawMany();
 
+    const byGender = await this.repo
+      .createQueryBuilder('a')
+      .select(`COALESCE(a.gender, 'unknown')`, 'gender')
+      .addSelect('COUNT(*)', 'count')
+      .where(type ? 'a.type = :type' : '1=1', { type })
+      .groupBy(`COALESCE(a.gender, 'unknown')`)
+      .orderBy('count', 'DESC')
+      .getRawMany();
+
     const since = new Date();
     since.setDate(since.getDate() - 6);
 
@@ -61,6 +70,7 @@ export class DashboardService {
       byCourse,
       byFaculty,
       bySocial,
+      byGender,
       last7,
     };
   }
